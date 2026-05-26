@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.local
+.env
+.env.*
+
+# Local sqlite database
+server/backend/sentrylog.db
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
