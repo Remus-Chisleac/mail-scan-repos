@@ -120,11 +120,18 @@ export function buildResult(
   bodyText: string,
   links: EmailLink[],
 ): ExtractResult {
-  if (!bodyText && !subject) {
+  // The subject lands in the DOM almost immediately (header / document title)
+  // while the message body is lazy-rendered a beat later. Treating a
+  // subject-only result as success would analyze empty content and report a
+  // misleading score of 0, so we require something analyzable (body text or
+  // links) and otherwise signal "not ready" so the caller retries.
+  const hasAnalyzableContent = bodyText.length > 0 || links.length > 0;
+  if (!hasAnalyzableContent) {
     return {
       success: false,
-      error:
-        "Could not extract email content. Open a message and wait for it to finish loading.",
+      error: subject
+        ? "Could not read the message body. Open the email fully, wait for it to load, then scan again."
+        : "Could not extract email content. Open a message and wait for it to finish loading.",
     };
   }
 

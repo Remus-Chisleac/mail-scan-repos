@@ -12,11 +12,12 @@ export async function extractCurrentEmail(): Promise<ExtractResult> {
     error: "Could not extract the open email.",
   };
 
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  const maxAttempts = 6;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     lastResult =
       provider === "outlook" ? extractOutlookEmail() : extractGmailEmail();
     if (lastResult.success) return lastResult;
-    if (attempt < 3) await sleep(350);
+    if (attempt < maxAttempts - 1) await sleep(350);
   }
 
   return lastResult;
