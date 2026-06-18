@@ -36,6 +36,32 @@ export const RISK_THRESHOLDS = {
   MEDIUM_MAX: 59,
 } as const;
 
+/**
+ * Well-known brands frequently impersonated in phishing, mapped to their
+ * legitimate domains. Used both for sender/body brand-mismatch detection and
+ * for spotting look-alike domains (e.g. "paypal-secure.com").
+ */
+export const KNOWN_BRANDS: { name: string; domains: string[] }[] = [
+  { name: "paypal", domains: ["paypal.com"] },
+  { name: "microsoft", domains: ["microsoft.com", "outlook.com", "live.com", "office.com", "office365.com"] },
+  { name: "apple", domains: ["apple.com", "icloud.com"] },
+  { name: "google", domains: ["google.com", "gmail.com", "googlemail.com"] },
+  { name: "amazon", domains: ["amazon.com", "amazon.co", "amazon.co.uk", "amazonses.com"] },
+  { name: "netflix", domains: ["netflix.com"] },
+  { name: "facebook", domains: ["facebook.com", "fb.com", "facebookmail.com"] },
+  { name: "instagram", domains: ["instagram.com"] },
+  { name: "linkedin", domains: ["linkedin.com"] },
+  { name: "whatsapp", domains: ["whatsapp.com"] },
+  { name: "dhl", domains: ["dhl.com"] },
+  { name: "fedex", domains: ["fedex.com"] },
+  { name: "coinbase", domains: ["coinbase.com"] },
+  { name: "dropbox", domains: ["dropbox.com"] },
+  { name: "docusign", domains: ["docusign.com", "docusign.net"] },
+  { name: "bank of america", domains: ["bankofamerica.com"] },
+  { name: "wells fargo", domains: ["wellsfargo.com"] },
+  { name: "chase", domains: ["chase.com"] },
+];
+
 export const DEFAULT_SETTINGS = {
   analysisMode: "basic" as const,
   aiProvider: "gemini" as const,

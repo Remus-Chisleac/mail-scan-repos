@@ -1,4 +1,5 @@
 import type { EmailLink, AnalysisFlag } from "@shared/types";
+import { KNOWN_BRANDS } from "@shared/constants";
 
 const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/gi;
 
@@ -172,6 +173,69 @@ export function checkShortenedUrls(urls: string[]): AnalysisFlag[] {
         message: `Shortened URL detected: ${domain}`,
         severity: "medium",
       });
+    }
+  }
+
+  return flags;
+}
+
+export function checkPunycode(urls: string[]): AnalysisFlag[] {
+  const flags: AnalysisFlag[] = [];
+  const seen = new Set<string>();
+
+  for (const url of urls) {
+    const domain = getDomain(url);
+    if (!domain || seen.has(domain)) continue;
+    seen.add(domain);
+
+    if (domain.split(".").some((label) => label.startsWith("xn--"))) {
+      flags.push({
+        type: "punycode",
+        message: `Domain "${domain}" uses punycode encoding (possible homograph attack)`,
+        severity: "high",
+      });
+    }
+  }
+
+  return flags;
+}
+
+export function checkLookalikeDomains(urls: string[]): AnalysisFlag[] {
+  const flags: AnalysisFlag[] = [];
+  const seen = new Set<string>();
+
+  for (const url of urls) {
+    const domain = getDomain(url);
+    if (!domain || seen.has(domain)) continue;
+    seen.add(domain);
+
+    const labels = domain.split(/[.-]/);
+
+    for (const brand of KNOWN_BRANDS) {
+      const token = brand.name.replace(/[^a-z0-9]/g, "");
+      if (token.length < 5) continue;
+
+      const isOfficial = brand.domains.some(
+        (d) => domain === d || domain.endsWith(`.${d}`),
+      );
+      if (isOfficial) continue;
+
+      // Longer brand tokens tolerate a substring match; short ones (e.g.
+      // "chase", "apple") require a label boundary to avoid matching words
+      // like "purchase" or "pineapple".
+      const mentionsBrand =
+        token.length >= 6
+          ? labels.some((label) => label.includes(token))
+          : labels.some((label) => label === token || label.startsWith(token));
+
+      if (mentionsBrand) {
+        flags.push({
+          type: "lookalike_domain",
+          message: `Domain "${domain}" imitates "${brand.name}" but is not an official ${brand.name} domain`,
+          severity: "high",
+        });
+        break;
+      }
     }
   }
 

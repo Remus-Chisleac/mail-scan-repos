@@ -1,5 +1,10 @@
-import type { EmailData, BasicAnalysisResult, AnalysisFlag } from "@shared/types";
-import { RISK_THRESHOLDS } from "@shared/constants";
+import type {
+  EmailData,
+  BasicAnalysisResult,
+  AnalysisFlag,
+  RiskLevel,
+} from "@shared/types";
+import { RISK_THRESHOLDS, KNOWN_BRANDS } from "@shared/constants";
 import {
   extractUrls,
   checkLinkMismatch,
@@ -7,62 +12,207 @@ import {
   checkIPUrls,
   checkHomoglyphs,
   checkShortenedUrls,
+  checkPunycode,
+  checkLookalikeDomains,
 } from "./url-checker";
 
 const URGENCY_KEYWORDS = [
   "immediately",
   "urgent",
+  "as soon as possible",
+  "right away",
   "suspend",
+  "suspended",
   "verify your account",
+  "verify your identity",
   "confirm your identity",
+  "confirm your account",
   "unauthorized",
   "locked",
+  "deactivat",
   "expire",
+  "expires",
   "act now",
+  "action required",
+  "final notice",
   "limited time",
+  "within 24 hours",
+  "within 48 hours",
   "click here",
+  "click below",
   "update your payment",
   "your account has been",
+  "failure to",
+  "avoid suspension",
 ];
 
-const WEIGHTS = {
-  linkMismatch: 30,
-  suspiciousTld: 15,
-  ipUrl: 20,
-  homoglyph: 25,
-  urgencyKeyword: 10,
-  urgencyMax: 30,
-  grammarFlags: 10,
-  senderMismatch: 20,
-  missingSender: 15,
-  attachmentBait: 10,
-} as const;
+const CREDENTIAL_PHRASES = [
+  "verify your password",
+  "confirm your password",
+  "enter your password",
+  "update your password",
+  "your password",
+  "login credentials",
+  "log in to verify",
+  "sign in to verify",
+  "confirm your account details",
+  "update your billing",
+  "billing information",
+  "payment details",
+  "credit card number",
+  "card number",
+  "social security",
+  "ssn",
+  "one-time password",
+  "otp",
+  "security code",
+  "pin number",
+];
 
-function checkUrgencyKeywords(bodyText: string): AnalysisFlag[] {
+const FINANCIAL_LURE_PHRASES = [
+  "you have won",
+  "you've won",
+  "lottery",
+  "prize",
+  "claim your reward",
+  "claim your prize",
+  "inheritance",
+  "gift card",
+  "tax refund",
+  "refund of",
+  "you are eligible",
+  "congratulations you",
+  "cash bonus",
+  "bitcoin",
+  "wire transfer",
+];
+
+const ATTACHMENT_PHRASES = [
+  "open the attachment",
+  "see attached",
+  "download the file",
+  "invoice attached",
+  "view the document",
+  "scan the qr",
+];
+
+const GENERIC_GREETINGS = [
+  "dear customer",
+  "dear user",
+  "dear valued customer",
+  "dear account holder",
+  "dear member",
+  "dear client",
+  "dear sir/madam",
+  "dear sir or madam",
+  "attention user",
+  "valued customer",
+];
+
+/**
+ * Probability (0..1) each signal type contributes to the phishing likelihood.
+ * Signals are combined with a noisy-OR (see {@link computeScore}) so that many
+ * weak signals accumulate smoothly with diminishing returns, producing a
+ * granular 0-100 score instead of saturating in large fixed jumps.
+ */
+const SIGNAL_WEIGHTS: Record<string, number> = {
+  link_mismatch: 0.55,
+  ip_url: 0.5,
+  homoglyph: 0.6,
+  punycode: 0.5,
+  lookalike_domain: 0.55,
+  suspicious_tld: 0.3,
+  shortened_url: 0.22,
+  sender_mismatch: 0.5,
+  missing_sender: 0.18,
+  credential_request: 0.45,
+  attachment_bait: 0.2,
+  financial_lure: 0.25,
+  generic_greeting: 0.12,
+  urgency: 0.12,
+  grammar: 0.1,
+};
+
+const SEVERITY_WEIGHTS: Record<RiskLevel, number> = {
+  high: 0.5,
+  medium: 0.2,
+  low: 0.1,
+};
+
+function keywordFlags(
+  text: string,
+  keywords: string[],
+  type: string,
+  severity: RiskLevel,
+  describe: (keyword: string) => string,
+): AnalysisFlag[] {
   const flags: AnalysisFlag[] = [];
-  const lower = bodyText.toLowerCase();
+  const lower = text.toLowerCase();
+  const seen = new Set<string>();
 
-  for (const keyword of URGENCY_KEYWORDS) {
-    if (lower.includes(keyword)) {
-      flags.push({
-        type: "urgency",
-        message: `Urgency keyword detected: "${keyword}"`,
-        severity: "medium",
-      });
+  for (const keyword of keywords) {
+    if (lower.includes(keyword) && !seen.has(keyword)) {
+      seen.add(keyword);
+      flags.push({ type, message: describe(keyword), severity });
     }
   }
 
   return flags;
 }
 
+function checkUrgencyKeywords(text: string): AnalysisFlag[] {
+  return keywordFlags(
+    text,
+    URGENCY_KEYWORDS,
+    "urgency",
+    "medium",
+    (k) => `Urgency/pressure language detected: "${k}"`,
+  );
+}
+
+function checkCredentialRequests(text: string): AnalysisFlag[] {
+  return keywordFlags(
+    text,
+    CREDENTIAL_PHRASES,
+    "credential_request",
+    "high",
+    (k) => `Requests sensitive credentials: "${k}"`,
+  );
+}
+
+function checkFinancialLures(text: string): AnalysisFlag[] {
+  return keywordFlags(
+    text,
+    FINANCIAL_LURE_PHRASES,
+    "financial_lure",
+    "medium",
+    (k) => `Financial lure / reward bait: "${k}"`,
+  );
+}
+
+function checkGenericGreeting(bodyText: string): AnalysisFlag[] {
+  const opening = bodyText.slice(0, 200).toLowerCase();
+  for (const greeting of GENERIC_GREETINGS) {
+    if (opening.includes(greeting)) {
+      return [
+        {
+          type: "generic_greeting",
+          message: `Impersonal greeting: "${greeting}"`,
+          severity: "low",
+        },
+      ];
+    }
+  }
+  return [];
+}
+
 function checkGrammarFlags(bodyText: string): AnalysisFlag[] {
   const flags: AnalysisFlag[] = [];
 
+  const letters = bodyText.replace(/[^A-Za-z]/g, "").length;
   const capsRatio =
-    bodyText.replace(/[^A-Za-z]/g, "").length > 0
-      ? (bodyText.replace(/[^A-Z]/g, "").length /
-          bodyText.replace(/[^A-Za-z]/g, "").length) *
-        100
+    letters > 0
+      ? (bodyText.replace(/[^A-Z]/g, "").length / letters) * 100
       : 0;
 
   if (capsRatio > 40 && bodyText.length > 50) {
@@ -90,23 +240,15 @@ function checkSenderMismatch(email: EmailData): AnalysisFlag[] {
   if (!email.senderEmail) return flags;
 
   const senderDomain = email.senderEmail.split("@")[1]?.toLowerCase() ?? "";
-  const bodyLower = email.bodyText.toLowerCase();
+  const haystack = `${email.subject} ${email.bodyText}`.toLowerCase();
 
-  const brandPatterns: [string, string[]][] = [
-    ["paypal", ["paypal.com"]],
-    ["microsoft", ["microsoft.com", "outlook.com", "live.com"]],
-    ["apple", ["apple.com", "icloud.com"]],
-    ["google", ["google.com", "gmail.com"]],
-    ["amazon", ["amazon.com", "amazon.co"]],
-    ["netflix", ["netflix.com"]],
-    ["bank of america", ["bankofamerica.com"]],
-  ];
-
-  for (const [brand, domains] of brandPatterns) {
-    if (bodyLower.includes(brand) && !domains.some((d) => senderDomain.includes(d))) {
+  for (const brand of KNOWN_BRANDS) {
+    const mentionsBrand = haystack.includes(brand.name);
+    const fromBrand = brand.domains.some((d) => senderDomain.includes(d));
+    if (mentionsBrand && !fromBrand) {
       flags.push({
         type: "sender_mismatch",
-        message: `Email mentions "${brand}" but sender domain is "${senderDomain}"`,
+        message: `Email references "${brand.name}" but sender domain is "${senderDomain}"`,
         severity: "high",
       });
       break;
@@ -128,72 +270,32 @@ function checkMissingSender(email: EmailData): AnalysisFlag[] {
 }
 
 function checkAttachmentBait(bodyText: string): AnalysisFlag[] {
-  const lower = bodyText.toLowerCase();
-  const phrases = [
-    "open the attachment",
-    "see attached",
-    "download the file",
-    "invoice attached",
-    "wire transfer",
-    "payment required",
-  ];
-
-  for (const phrase of phrases) {
-    if (lower.includes(phrase)) {
-      return [
-        {
-          type: "attachment_bait",
-          message: `Potential attachment bait: "${phrase}"`,
-          severity: "medium",
-        },
-      ];
-    }
-  }
-
-  return [];
+  return keywordFlags(
+    bodyText,
+    ATTACHMENT_PHRASES,
+    "attachment_bait",
+    "medium",
+    (k) => `Potential attachment/document bait: "${k}"`,
+  ).slice(0, 1);
 }
 
+/**
+ * Combine signals with a noisy-OR: score = 1 - Π(1 - wᵢ). Each signal lowers
+ * the "clean" probability independently, so adding signals always raises the
+ * score but with diminishing returns, and the result stays in [0, 100] without
+ * a hard clamp distorting strong cases.
+ */
 function computeScore(flags: AnalysisFlag[]): number {
-  let score = 0;
-  let urgencyPoints = 0;
+  let cleanProbability = 1;
 
   for (const flag of flags) {
-    switch (flag.type) {
-      case "link_mismatch":
-        score += WEIGHTS.linkMismatch;
-        break;
-      case "suspicious_tld":
-        score += WEIGHTS.suspiciousTld;
-        break;
-      case "ip_url":
-        score += WEIGHTS.ipUrl;
-        break;
-      case "homoglyph":
-        score += WEIGHTS.homoglyph;
-        break;
-      case "urgency":
-        urgencyPoints += WEIGHTS.urgencyKeyword;
-        break;
-      case "grammar":
-        score += WEIGHTS.grammarFlags;
-        break;
-      case "sender_mismatch":
-        score += WEIGHTS.senderMismatch;
-        break;
-      case "missing_sender":
-        score += WEIGHTS.missingSender;
-        break;
-      case "shortened_url":
-        score += 12;
-        break;
-      case "attachment_bait":
-        score += WEIGHTS.attachmentBait;
-        break;
-    }
+    const weight =
+      SIGNAL_WEIGHTS[flag.type] ?? SEVERITY_WEIGHTS[flag.severity] ?? 0.1;
+    const bounded = Math.min(Math.max(weight, 0), 0.95);
+    cleanProbability *= 1 - bounded;
   }
 
-  score += Math.min(urgencyPoints, WEIGHTS.urgencyMax);
-  return Math.min(score, 100);
+  return Math.round((1 - cleanProbability) * 100);
 }
 
 export function runBasicAnalysis(email: EmailData): BasicAnalysisResult {
@@ -203,13 +305,21 @@ export function runBasicAnalysis(email: EmailData): BasicAnalysisResult {
   ];
   const uniqueUrls = [...new Set(allUrls)];
 
+  // Subject lines carry many phishing cues, so text checks scan both.
+  const scanText = `${email.subject}\n${email.bodyText}`;
+
   const flags: AnalysisFlag[] = [
     ...checkLinkMismatch(email.links),
     ...checkSuspiciousTLDs(uniqueUrls),
     ...checkIPUrls(uniqueUrls),
     ...checkHomoglyphs(uniqueUrls),
+    ...checkPunycode(uniqueUrls),
+    ...checkLookalikeDomains(uniqueUrls),
     ...checkShortenedUrls(uniqueUrls),
-    ...checkUrgencyKeywords(email.bodyText),
+    ...checkUrgencyKeywords(scanText),
+    ...checkCredentialRequests(scanText),
+    ...checkFinancialLures(scanText),
+    ...checkGenericGreeting(email.bodyText),
     ...checkGrammarFlags(email.bodyText),
     ...checkSenderMismatch(email),
     ...checkMissingSender(email),
