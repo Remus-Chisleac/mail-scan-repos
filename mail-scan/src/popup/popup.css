@@ -369,17 +369,37 @@ select:focus {
   border-left-color: var(--success);
 }
 
-.ai-summary {
-  padding: 8px;
+.analysis-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.analysis-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.analysis-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.recommendation {
+  padding: 8px 10px;
   background: var(--bg);
   border-radius: var(--radius);
   font-size: 12px;
-  line-height: 1.5;
-}
-
-.ai-summary h4 {
-  font-size: 12px;
-  margin-bottom: 4px;
+  line-height: 1.45;
+  font-style: italic;
+  color: var(--text);
 }
 
 .scan-panel {
