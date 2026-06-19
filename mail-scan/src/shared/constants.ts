@@ -2,10 +2,6 @@ export const MSG = {
   SCAN_EMAIL: "SCAN_EMAIL",
   EXTRACT_EMAIL: "EXTRACT_EMAIL",
   PING: "PING",
-  UNLOCK_VAULT: "UNLOCK_VAULT",
-  LOCK_VAULT: "LOCK_VAULT",
-  INIT_VAULT: "INIT_VAULT",
-  CHECK_VAULT: "CHECK_VAULT",
   SAVE_SETTINGS: "SAVE_SETTINGS",
   GET_SETTINGS: "GET_SETTINGS",
   SAVE_SECRET: "SAVE_SECRET",
@@ -15,7 +11,6 @@ export const MSG = {
 } as const;
 
 export const STORAGE_KEYS = {
-  VAULT_META: "vault_meta",
   SETTINGS: "user_settings",
   SECRET_PREFIX: "secret_",
 } as const;
@@ -46,6 +41,7 @@ export const KNOWN_BRANDS: { name: string; domains: string[] }[] = [
   { name: "microsoft", domains: ["microsoft.com", "outlook.com", "live.com", "office.com", "office365.com"] },
   { name: "apple", domains: ["apple.com", "icloud.com"] },
   { name: "google", domains: ["google.com", "gmail.com", "googlemail.com"] },
+  { name: "yahoo", domains: ["yahoo.com", "yahoo.co.uk", "yahooinc.com", "aol.com"] },
   { name: "amazon", domains: ["amazon.com", "amazon.co", "amazon.co.uk", "amazonses.com"] },
   { name: "netflix", domains: ["netflix.com"] },
   { name: "facebook", domains: ["facebook.com", "fb.com", "facebookmail.com"] },

@@ -69,18 +69,28 @@ body {
   font-weight: 700;
 }
 
-.header .lock-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
+.header.header-nav {
+  justify-content: flex-start;
+  gap: 10px;
 }
 
-.header .lock-btn:hover {
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s;
+}
+
+.icon-btn:hover {
   background: var(--bg-card);
+  color: var(--text);
 }
 
 .card {
@@ -372,27 +382,84 @@ select:focus {
   margin-bottom: 4px;
 }
 
-.password-screen {
+.scan-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 24px 16px;
-  text-align: center;
+  gap: 10px;
 }
 
-.password-screen h2 {
-  font-size: 18px;
-}
-
-.password-screen p {
+.mode-pill {
+  background: none;
+  border: none;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius);
 }
 
-.password-screen form {
-  width: 100%;
+.mode-pill:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.risk-hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border-left: 4px solid currentColor;
+}
+
+.risk-hero.low {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.risk-hero.medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.risk-hero.high {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.risk-hero-gauge {
+  display: flex;
+  align-items: baseline;
+  line-height: 1;
+}
+
+.risk-hero-score {
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.risk-hero-max {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.risk-hero-text {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 2px;
+}
+
+.risk-hero-headline {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.risk-hero-sub {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+  color: var(--text-muted);
 }

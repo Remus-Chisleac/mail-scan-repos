@@ -5,11 +5,6 @@ import {
   supportedMailLabel,
 } from "@shared/mail-providers";
 import {
-  isVaultInitialized,
-  initializeVault,
-  unlockVault,
-  lockVault,
-  isVaultUnlocked,
   saveSecret,
   getSecret,
   saveSettings,
@@ -17,6 +12,7 @@ import {
 } from "@shared/storage";
 import type {
   AnalysisResult,
+  BasicAnalysisResult,
   EmailData,
   AIProvider,
   AnalysisMode,
@@ -28,7 +24,7 @@ import {
   parseJwtPayload,
 } from "@shared/sentry-log";
 import { formatSenderLabel } from "@shared/email-format";
-import { runBasicAnalysis } from "./analysis/basic-engine";
+import { runBasicAnalysisWithNetwork } from "./analysis/basic-engine";
 import { analyzeWithGemini } from "./ai/gemini";
 import { analyzeWithChatGPT } from "./ai/chatgpt";
 import { analyzeWithClaude } from "./ai/claude";
@@ -127,7 +123,7 @@ async function extractEmailFromTab(): Promise<EmailData> {
 
 async function runAIAnalysis(
   email: EmailData,
-  basicResult: ReturnType<typeof runBasicAnalysis>,
+  basicResult: BasicAnalysisResult,
   provider: AIProvider,
 ) {
   log("Running AI analysis with provider:", provider);
@@ -218,33 +214,6 @@ type MessageHandler = (
 ) => Promise<HandlerResponse>;
 
 const handlers: Record<string, MessageHandler> = {
-  [MSG.CHECK_VAULT]: async () => {
-    const initialized = await isVaultInitialized();
-    const unlocked = isVaultUnlocked();
-    log("CHECK_VAULT ->", { initialized, unlocked });
-    return { initialized, unlocked };
-  },
-
-  [MSG.INIT_VAULT]: async (msg) => {
-    log("INIT_VAULT -> initializing...");
-    await initializeVault(msg.password as string);
-    log("INIT_VAULT -> done");
-    return { success: true };
-  },
-
-  [MSG.UNLOCK_VAULT]: async (msg) => {
-    log("UNLOCK_VAULT -> attempting...");
-    const result = await unlockVault(msg.password as string);
-    log("UNLOCK_VAULT ->", result.success ? "success" : "wrong password");
-    return result;
-  },
-
-  [MSG.LOCK_VAULT]: async () => {
-    log("LOCK_VAULT");
-    lockVault();
-    return { success: true };
-  },
-
   [MSG.SAVE_SETTINGS]: async (msg) => {
     log("SAVE_SETTINGS ->", msg.settings);
     await saveSettings(
@@ -322,7 +291,7 @@ const handlers: Record<string, MessageHandler> = {
     const email = await extractEmailFromTab();
 
     log("Running basic analysis...");
-    const basicResult = runBasicAnalysis(email);
+    const basicResult = await runBasicAnalysisWithNetwork(email);
     log("Basic analysis ->", {
       score: basicResult.score,
       riskLevel: basicResult.riskLevel,

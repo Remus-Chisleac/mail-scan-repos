@@ -20,27 +20,33 @@ export default function AnalysisResults({ result, error }: Props) {
   const topFlags = basicAnalysis.flags.slice(0, 6);
   const hiddenFlagCount = basicAnalysis.flags.length - topFlags.length;
 
+  const riskCopy: Record<string, string> = {
+    low: "Looks safe",
+    medium: "Be cautious",
+    high: "Likely phishing",
+  };
+
   return (
     <div className="card results">
+      <div className={`risk-hero ${basicAnalysis.riskLevel}`}>
+        <div className="risk-hero-gauge">
+          <span className="risk-hero-score">{basicAnalysis.score}</span>
+          <span className="risk-hero-max">/100</span>
+        </div>
+        <div className="risk-hero-text">
+          <span className="risk-hero-headline">
+            {riskCopy[basicAnalysis.riskLevel] ?? basicAnalysis.riskLevel}
+          </span>
+          <span className="risk-hero-sub">
+            {basicAnalysis.riskLevel} risk &middot; scanned{" "}
+            {new Date(timestamp).toLocaleTimeString()}
+          </span>
+        </div>
+      </div>
+
       <div className="email-meta">
         <div className="email-meta-subject">{emailMeta.subject || "(no subject)"}</div>
         <div className="email-meta-sender">{emailMeta.sender || "Unknown sender"}</div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 10,
-        }}
-      >
-        <span className={`risk-badge ${basicAnalysis.riskLevel}`}>
-          {basicAnalysis.riskLevel} risk &middot; {basicAnalysis.score}/100
-        </span>
-        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-          {new Date(timestamp).toLocaleTimeString()}
-        </span>
       </div>
 
       {topFlags.length > 0 && (

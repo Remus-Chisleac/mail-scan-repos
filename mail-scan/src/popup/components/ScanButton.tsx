@@ -36,7 +36,8 @@ export default function ScanButton({
   return (
     <>
       <p className="hint" style={{ marginBottom: 8 }}>
-        Open a message in Gmail or Outlook, then scan the visible email.
+        Open a message in Gmail, Outlook, or Yahoo Mail, then scan the visible
+        email.
       </p>
       <button
       className="btn btn-primary btn-block"

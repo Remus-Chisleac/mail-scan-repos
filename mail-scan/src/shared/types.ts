@@ -58,20 +58,10 @@ export interface LogPayload {
   extensionVersion: string;
 }
 
-export interface EncryptedData {
-  iv: string;
-  ciphertext: string;
-}
-
 export interface UserSettings {
   analysisMode: AnalysisMode;
   aiProvider: AIProvider;
   loggingEnabled: boolean;
   customAiEndpoint?: string;
   loggingEndpoint?: string;
-}
-
-export interface VaultMeta {
-  salt: string;
-  passwordHash: string;
 }

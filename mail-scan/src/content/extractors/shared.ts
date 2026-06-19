@@ -30,6 +30,11 @@ export function decodeRedirectUrl(href: string): string {
     ) {
       return decodeURIComponent(url.searchParams.get("url") ?? href);
     }
+    // Yahoo / AOL Mail route outbound links through a tracking redirector and
+    // carry the real destination in the RU= (redirect URL) parameter.
+    if (url.hostname.endsWith(".yahoo.com") && url.searchParams.has("RU")) {
+      return decodeURIComponent(url.searchParams.get("RU") ?? href);
+    }
   } catch {
     return href;
   }

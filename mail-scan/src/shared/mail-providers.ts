@@ -1,4 +1,4 @@
-export type MailProvider = "gmail" | "outlook";
+export type MailProvider = "gmail" | "outlook" | "yahoo";
 
 const GMAIL_HOSTS = ["mail.google.com"];
 const OUTLOOK_HOSTS = [
@@ -7,6 +7,9 @@ const OUTLOOK_HOSTS = [
   "outlook.office365.com",
   "outlook.cloud.microsoft",
 ];
+// Yahoo Mail ships under mail.yahoo.com plus country variants (mail.yahoo.co.uk,
+// mail.yahoo.de, …) and AOL, which runs the same web client.
+const YAHOO_HOST_PREFIXES = ["mail.yahoo.", "mail.aol."];
 
 export function detectMailProvider(url: string): MailProvider | null {
   try {
@@ -15,6 +18,7 @@ export function detectMailProvider(url: string): MailProvider | null {
     if (OUTLOOK_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) {
       return "outlook";
     }
+    if (YAHOO_HOST_PREFIXES.some((p) => host.startsWith(p))) return "yahoo";
   } catch {
     return null;
   }
@@ -29,7 +33,8 @@ export function supportedMailLabel(url: string): string {
   const provider = detectMailProvider(url);
   if (provider === "gmail") return "Gmail";
   if (provider === "outlook") return "Outlook";
-  return "Gmail or Outlook";
+  if (provider === "yahoo") return "Yahoo Mail";
+  return "Gmail, Outlook, or Yahoo Mail";
 }
 
 function matchPattern(url: string, pattern: string): boolean {

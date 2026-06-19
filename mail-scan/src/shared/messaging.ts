@@ -20,22 +20,6 @@ export interface MessageMap {
     request: Record<string, never>;
     response: { ok: boolean };
   };
-  [MSG.INIT_VAULT]: {
-    request: { password: string };
-    response: { success: boolean };
-  };
-  [MSG.UNLOCK_VAULT]: {
-    request: { password: string };
-    response: { success: boolean };
-  };
-  [MSG.LOCK_VAULT]: {
-    request: Record<string, never>;
-    response: { success: boolean };
-  };
-  [MSG.CHECK_VAULT]: {
-    request: Record<string, never>;
-    response: { initialized: boolean; unlocked: boolean };
-  };
   [MSG.SAVE_SETTINGS]: {
     request: { settings: UserSettings };
     response: { success: boolean };

@@ -1,6 +1,7 @@
 import { detectMailProvider } from "@shared/mail-providers";
 import { extractGmailEmail } from "./gmail";
 import { extractOutlookEmail } from "./outlook";
+import { extractYahooEmail } from "./yahoo";
 import { sleep, type ExtractResult } from "./shared";
 
 export type { ExtractResult } from "./shared";
@@ -15,7 +16,11 @@ export async function extractCurrentEmail(): Promise<ExtractResult> {
   const maxAttempts = 6;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     lastResult =
-      provider === "outlook" ? extractOutlookEmail() : extractGmailEmail();
+      provider === "outlook"
+        ? extractOutlookEmail()
+        : provider === "yahoo"
+          ? extractYahooEmail()
+          : extractGmailEmail();
     if (lastResult.success) return lastResult;
     if (attempt < maxAttempts - 1) await sleep(350);
   }
